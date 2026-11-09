@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>La Abeja Defensora - Edición Árbol Sagrado</title>
+    <link rel="stylesheet" href="tailwind.css">
+        <style>
+        @font-face { font-family: 'Press Start 2P'; src: url('press-start-2p-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+        @font-face { font-family: 'VT323'; src: url('vt323-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+    </style>
+    <style>
+        body {
+            font-family: 'VT323', 'Courier New', monospace;
+            background-color: #020617;
+            color: #f8fafc;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        .font-pixel { font-family: 'Press Start 2P', 'Courier New', monospace; }
+        canvas {
+            image-rendering: optimizeSpeed;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        .modal-blur {
+            background: rgba(2, 6, 23, 0.94);
+            backdrop-filter: blur(12px);
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #d97706; border-radius: 4px; }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col justify-between items-center bg-slate-950 p-2 select-none overflow-hidden box-border">
+
+    <!-- HUD Header -->
+    <header class="w-full max-w-6xl bg-slate-900/90 border-2 border-amber-500/60 px-4 py-2 rounded-2xl shadow-2xl flex items-center justify-between z-10 shrink-0">
+        <div class="flex items-center space-x-3">
+            <canvas id="skin-preview-canvas" width="32" height="32" class="w-10 h-10 border border-amber-500/40 rounded-lg bg-slate-950/80 shrink-0"></canvas>
+            <div>
+                <h1 class="text-xs md:text-xl text-amber-400 font-pixel tracking-wide drop-shadow">LA ABEJA DEFENSORA</h1>
+                <p id="ui-level-name" class="text-xs md:text-sm text-emerald-400 font-bold">Piso 1: Primavera Soleada</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 md:gap-4 text-xs md:text-base">
+            <div class="bg-slate-950 px-2.5 py-1 rounded-xl border border-rose-500/50 flex items-center gap-1.5 text-rose-400">
+                <span>❤️</span>
+                <span id="ui-lives" class="font-pixel text-[10px] md:text-xs">3/3</span>
+            </div>
+            <div class="bg-slate-950 px-2.5 py-1 rounded-xl border border-amber-500/50 flex items-center gap-1.5 text-amber-300">
+                <span>🍯</span>
+                <span id="ui-polen" class="font-pixel text-[10px] md:text-xs">0</span>
+            </div>
+            <div class="bg-slate-950 px-2.5 py-1 rounded-xl border border-cyan-500/50 flex items-center gap-1.5 text-cyan-300">
+                <span>⭐</span>
+                <span id="ui-score" class="font-pixel text-[10px] md:text-xs">0</span>
+            </div>
+
+            <button onclick="toggleShop()" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 px-3 py-1.5 rounded-xl font-pixel text-[10px] md:text-xs shadow-lg transition active:scale-95 flex items-center gap-1 shrink-0">
+                🛒 TIENDA
+            </button>
+            <button onclick="toggleMapModal()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/50 px-3 py-1.5 rounded-xl font-pixel text-[10px] md:text-xs shadow-lg transition active:scale-95 flex items-center gap-1 shrink-0">
+                🗺️ PISOS
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Engine Viewport -->
+    <main class="w-full max-w-6xl flex-1 relative my-1 flex flex-col justify-center items-center overflow-hidden min-h-0">
+        
+        <!-- Skill HUD & Flight Stamina -->
+        <div class="w-full flex justify-between items-center mb-1 px-2 text-xs shrink-0">
+            <div class="flex gap-1.5 font-pixel text-[8px] md:text-[10px] overflow-x-auto">
+                <div id="hud-skill-equipped" class="bg-slate-900/90 border border-amber-500/60 px-2 py-0.5 rounded-lg text-amber-300 whitespace-nowrap">
+                    HABILIDAD (Q/E): <span id="cd-equipped">NINGUNA</span>
+                </div>
+            </div>
+
+            <!-- Flight Stamina -->
+            <div class="flex items-center gap-2 bg-slate-900/90 border border-cyan-500/60 px-3 py-1 rounded-xl shrink-0">
+                <span class="font-pixel text-[9px] text-cyan-300">ESTAMINA VUELO</span>
+                <div class="w-24 md:w-36 h-3 bg-slate-950 rounded-full border border-slate-700 overflow-hidden p-0.5">
+                    <div id="stamina-bar-fill" class="h-full bg-gradient-to-r from-cyan-500 to-blue-400 rounded-full transition-all duration-75" style="width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="relative w-full flex-1 max-h-[76vh] aspect-[16/9] bg-slate-950 rounded-2xl overflow-hidden border-4 border-amber-900/80 shadow-2xl flex items-center justify-center">
+            <canvas id="gameCanvas" class="w-full h-full object-contain block"></canvas>
+
+            <!-- Minimap -->
+            <div class="absolute top-3 right-3 bg-slate-950/90 border-2 border-amber-500/60 rounded-xl p-1.5 shadow-2xl pointer-events-none flex flex-col items-center">
+                <span class="font-pixel text-[8px] text-amber-400 mb-1">ÁRBOLES 3600x4800</span>
+                <canvas id="minimapCanvas" width="130" height="170" class="rounded border border-amber-900/50 bg-slate-900"></canvas>
+            </div>
+
+            <!-- Start Menu Overlay -->
+            <div id="menu-overlay" class="absolute inset-0 modal-blur flex flex-col items-center justify-center p-6 text-center z-20 overflow-y-auto">
+                <div class="bg-slate-900/95 border-2 border-amber-500/60 p-6 md:p-8 rounded-3xl max-w-lg w-full shadow-2xl my-auto">
+                    <canvas id="menu-bee-canvas" width="64" height="64" class="mx-auto mb-3 animate-bounce"></canvas>
+                    <h2 class="text-2xl md:text-4xl text-amber-400 font-pixel mb-3 drop-shadow">LA ABEJA DEFENSORA</h2>
+                    <p class="text-slate-300 text-sm md:text-lg mb-6 leading-relaxed">
+                        Explora el Gran Árbol Sagrado en Pixel Art Realista. Colecciona 12 razas de abejas, desata 10 habilidades mágicas y derrota al Apicultor Final.
+                    </p>
+                    <button onclick="startGame()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-pixel text-xs md:text-base py-3.5 rounded-xl shadow-xl transition transform hover:scale-105 active:scale-95">
+                        ¡INICIAR AVENTURA!
+                    </button>
+                </div>
+            </div>
+
+            <!-- Message / Interstitial Overlay -->
+            <div id="msg-overlay" class="absolute inset-0 modal-blur hidden flex flex-col items-center justify-center p-6 text-center z-20 overflow-y-auto">
+                <div class="bg-slate-900 border-2 border-amber-500/60 p-6 md:p-8 rounded-3xl max-w-md w-full shadow-2xl my-auto">
+                    <h3 id="msg-title" class="text-xl md:text-2xl text-amber-400 font-pixel mb-3">¡Nivel Completado!</h3>
+                    <p id="msg-desc" class="text-slate-300 text-sm md:text-base mb-6">Cargando siguiente área...</p>
+                    <button id="msg-btn" onclick="closeMsgOverlay()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-pixel text-xs py-3 rounded-xl shadow-xl transition">
+                        CONTINUAR
+                    </button>
+                </div>
+            </div>
+
+            <!-- VICTORY SCREEN OVERLAY -->
+            <div id="victory-modal" class="absolute inset-0 modal-blur hidden flex flex-col items-center justify-center p-6 text-center z-30 overflow-y-auto">
+                <div class="bg-slate-900 border-4 border-amber-400 p-6 md:p-8 rounded-3xl max-w-xl w-full shadow-2xl relative overflow-hidden my-auto">
+                    <div class="absolute -top-10 -right-10 text-8xl opacity-10">👑</div>
+                    <h2 class="text-xl md:text-3xl text-amber-300 font-pixel mb-2 drop-shadow">¡¡GANASTE!!</h2>
+                    <h3 class="text-xs md:text-sm text-emerald-400 font-pixel mb-4">HAS SALVADO LA COLMENA Y EL ÁRBOL SAGRADO</h3>
+                    
+                    <div class="bg-slate-950/80 border border-amber-500/30 rounded-2xl p-4 mb-6 space-y-2 text-xs md:text-sm text-slate-300">
+                        <div class="flex justify-between"><span>⏱️ Tiempo Transcurrido:</span><span id="vic-time" class="text-amber-400 font-bold">00:00</span></div>
+                        <div class="flex justify-between"><span>🍯 Polen Recolectado:</span><span id="vic-polen" class="text-amber-400 font-bold">0</span></div>
+                        <div class="flex justify-between"><span>🪵 Lugares Secretos Descubiertos:</span><span id="vic-secrets" class="text-emerald-400 font-bold">0</span></div>
+                        <div class="flex justify-between"><span>🪓 Hachas Esquivadas:</span><span id="vic-axes" class="text-cyan-400 font-bold">0</span></div>
+                        <div class="flex justify-between border-t border-slate-800 pt-2 font-bold text-amber-300"><span>PUNTUACIÓN FINAL:</span><span id="vic-score" class="font-pixel text-xs">0 Pts</span></div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button onclick="restartFullGame()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-pixel text-xs py-3 rounded-xl shadow-lg transition">
+                            🔄 VOLVER A JUGAR
+                        </button>
+                        <button onclick="enableFreeMode()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-pixel text-xs py-3 rounded-xl shadow-lg transition">
+                            🗺️ MODO LIBRE
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Touch Controls -->
+        <div id="touch-controls" class="w-full flex justify-between items-center mt-2 px-2 md:hidden shrink-0">
+            <div class="flex gap-2">
+                <button id="btn-left" class="w-12 h-12 bg-slate-800 border-2 border-amber-600/60 active:bg-amber-500 text-amber-400 text-xl rounded-xl flex items-center justify-center font-bold">◀</button>
+                <button id="btn-right" class="w-12 h-12 bg-slate-800 border-2 border-amber-600/60 active:bg-amber-500 text-amber-400 text-xl rounded-xl flex items-center justify-center font-bold">▶</button>
+            </div>
+            <div class="flex gap-2">
+                <button id="btn-skill" class="w-12 h-12 bg-purple-900 border-2 border-purple-500 active:bg-purple-600 text-white font-pixel text-[8px] rounded-xl flex items-center justify-center">HABILIDAD</button>
+                <button id="btn-jump" class="w-12 h-12 bg-emerald-600 border-2 border-emerald-400 active:bg-emerald-300 text-slate-950 font-pixel text-[9px] rounded-xl flex items-center justify-center">SALTAR</button>
+                <button id="btn-fly" class="w-12 h-12 bg-amber-600 border-2 border-amber-400 active:bg-amber-300 text-slate-950 font-pixel text-[9px] rounded-xl flex items-center justify-center">VOLAR</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- SHOP MODAL -->
+    <div id="shop-modal" class="fixed inset-0 modal-blur hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border-2 border-amber-600/70 w-full max-w-4xl p-6 rounded-3xl shadow-2xl relative flex flex-col max-h-[90vh]">
+            <button onclick="toggleShop()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-3xl font-bold">✕</button>
+            
+            <div class="flex items-center gap-3 mb-4 shrink-0">
+                <span class="text-3xl">🛒</span>
+                <div>
+                    <h3 class="text-xl md:text-2xl text-amber-400 font-pixel">Tienda del Árbol Sagrado</h3>
+                    <p class="text-slate-400 text-sm">Polen disponible: <span id="shop-polen-display" class="text-amber-300 font-bold">0</span> 🍯</p>
+                </div>
+            </div>
+
+            <!-- Shop Tabs -->
+            <div class="flex border-b border-slate-800 mb-4 gap-2 overflow-x-auto shrink-0">
+                <button onclick="switchShopTab('skins')" id="tab-btn-skins" class="px-3 py-2 text-xs font-pixel border-b-2 border-amber-500 text-amber-400 shrink-0">12 RAZAS SKINS</button>
+                <button onclick="switchShopTab('skills')" id="tab-btn-skills" class="px-3 py-2 text-xs font-pixel border-b-2 border-transparent text-slate-400 hover:text-white shrink-0">10 HABILIDADES</button>
+                <button onclick="switchShopTab('stats')" id="tab-btn-stats" class="px-3 py-2 text-xs font-pixel border-b-2 border-transparent text-slate-400 hover:text-white shrink-0">MEJORAS</button>
+            </div>
+
+            <!-- Skins Tab -->
+            <div id="tab-skins" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto p-2 pr-2 flex-1"></div>
+
+            <!-- Skills Tab -->
+            <div id="tab-skills" class="hidden space-y-2 overflow-y-auto p-1 pr-2 flex-1"></div>
+
+            <!-- Stats Tab -->
+            <div id="tab-stats" class="hidden space-y-3 overflow-y-auto p-1 pr-2 flex-1">
+                <div class="bg-slate-800/60 border border-slate-700/80 p-3.5 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <h4 class="font-bold text-base text-white">Vidas Máximas (Nivel <span id="lvl-stat-lives">1</span>)</h4>
+                        <p class="text-slate-400 text-xs">Corazones máximos de salud.</p>
+                    </div>
+                    <button onclick="buyStat('lives')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-pixel text-xs px-3.5 py-2 rounded-xl transition shrink-0">
+                        <span id="cost-stat-lives">100</span> 🍯
+                    </button>
+                </div>
+
+                <div class="bg-slate-800/60 border border-slate-700/80 p-3.5 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <h4 class="font-bold text-base text-white">Estamina de Vuelo (Nivel <span id="lvl-stat-stamina">1</span>)</h4>
+                        <p class="text-slate-400 text-xs">Aumenta la capacidad del tiempo de vuelo.</p>
+                    </div>
+                    <button onclick="buyStat('stamina')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-pixel text-xs px-3.5 py-2 rounded-xl transition shrink-0">
+                        <span id="cost-stat-stamina">80</span> 🍯
+                    </button>
+                </div>
+
+                <div class="bg-slate-800/60 border border-slate-700/80 p-3.5 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <h4 class="font-bold text-base text-white">Fuerza de Salto (Nivel <span id="lvl-stat-jump">1</span>)</h4>
+                        <p class="text-slate-400 text-xs">Impulso de salto físico.</p>
+                    </div>
+                    <button onclick="buyStat('jump')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-pixel text-xs px-3.5 py-2 rounded-xl transition shrink-0">
+                        <span id="cost-stat-jump">70</span> 🍯
+                    </button>
+                </div>
+
+                <div class="bg-slate-800/60 border border-slate-700/80 p-3.5 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <h4 class="font-bold text-base text-white">Imán de Polen (Nivel <span id="lvl-stat-magnet">1</span>)</h4>
+                        <p class="text-slate-400 text-xs">Radio de atracción de polen.</p>
+                    </div>
+                    <button onclick="buyStat('magnet')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-pixel text-xs px-3.5 py-2 rounded-xl transition shrink-0">
+                        <span id="cost-stat-magnet">120</span> 🍯
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="toggleShop()" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-pixel text-xs py-3 rounded-xl transition shrink-0">
+                VOLVER AL JUEGO
+            </button>
+        </div>
+    </div>
+
+    <!-- MAP MODAL -->
+    <div id="map-modal" class="fixed inset-0 modal-blur hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border-2 border-amber-600/70 w-full max-w-2xl p-5 rounded-3xl shadow-2xl relative flex flex-col max-h-[85vh]">
+            <button onclick="toggleMapModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-3xl font-bold">✕</button>
+            <h3 class="text-xl text-amber-400 font-pixel mb-1 shrink-0">🗺️ Pisos del Árbol Sagrado</h3>
+            <p class="text-slate-400 text-sm mb-4 shrink-0">Selecciona cualquier piso desbloqueado.</p>
+            
+            <div id="map-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-3 max-h-[50vh] overflow-y-auto p-1 flex-1"></div>
+
+            <button onclick="toggleMapModal()" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-pixel text-xs py-3 rounded-xl transition shrink-0">
+                CERRAR
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const minimapCanvas = document.getElementById("minimapCanvas");
+        const miniCtx = minimapCanvas.getContext("2d");
+
+        // Precarga de Imágenes para las 12 skins
+        const skinImages = {};
+        ['01.png', '02.png', '03.png', '04.png', '05.png', '06.png', '07.png', '08.png', '09.png', '10.png', '11.png', '12.png'].forEach(src => {
+            const img = new Image();
+            img.src = src;
+            skinImages[src] = img;
+        });
+
+        function resizeCanvas() {
+            canvas.width = 1280;
+            canvas.height = 720;
+        }
+        resizeCanvas();
+
+        const WORLD_WIDTH = 3600;
+        const WORLD_HEIGHT = 4800;
+
+        let camera = { x: 0, y: 0, width: 1280, height: 720 };
+        let gameState = "MENU"; 
+        let currentLevel = 1;
+        let unlockedLevels = 1;
+        let score = 0;
+        let polenCoins = 300;
+        let matchStartTime = Date.now();
+        let axesDodgedCount = 0;
+        let totalSecretsDiscovered = 0;
+
+        let breakableDebris = [];
+        let speedEffectTimer = 0;
+
+        // 10 Levels Data
+        const levelsData = [
+            { id: 1, name: "Primavera Soleada", bg: "#022c22", bark: "#422006", foliage: "#15803d", sky: "#38bdf8", rain: false, snow: false, storm: false, exe: false, heightScale: 0.33 },
+            { id: 2, name: "Día Luminoso", bg: "#1e1b4b", bark: "#582f0e", foliage: "#ca8a04", sky: "#f0f9ff", rain: false, snow: false, storm: false, exe: false, heightScale: 0.33 },
+            { id: 3, name: "Tarde Dorada", bg: "#2a0808", bark: "#3b1d07", foliage: "#d97706", sky: "#fb923c", rain: false, snow: false, storm: false, exe: false, heightScale: 0.33 },
+            { id: 4, name: "Noche Estrellada", bg: "#020617", bark: "#1e1b18", foliage: "#064e3b", sky: "#0f172a", rain: false, snow: false, storm: false, exe: false, heightScale: 0.33 },
+            { id: 5, name: "Otoño Lluvioso", bg: "#081c24", bark: "#28190e", foliage: "#b91c1c", sky: "#334155", rain: true, snow: false, storm: false, exe: false, heightScale: 0.33 },
+            { id: 6, name: "Invierno Nevado", bg: "#032030", bark: "#332219", foliage: "#94a3b8", sky: "#bae6fd", rain: false, snow: true, storm: false, exe: false, heightScale: 1.0 },
+            { id: 7, name: "Cueva Profunda", bg: "#090500", bark: "#1c0d02", foliage: "#3f6212", sky: "#1a1005", rain: false, snow: false, storm: false, exe: false, heightScale: 1.0 },
+            { id: 8, name: "Tormenta Eléctrica", bg: "#0a0a1a", bark: "#2a1508", foliage: "#4c1d95", sky: "#1e1b4b", rain: true, snow: false, storm: true, exe: false, heightScale: 1.0 },
+            { id: 9, name: "Bosque Corrupto .EXE", bg: "#300000", bark: "#7f1d1d", foliage: "#991b1b", sky: "#450a0a", rain: false, snow: false, storm: false, exe: true, heightScale: 1.0 },
+            { id: 10, name: "Apicultor Jefe Final", bg: "#1f1002", bark: "#451a03", foliage: "#d97706", sky: "#78350f", rain: false, snow: false, storm: false, exe: false, heightScale: 1.0 }
+        ];
+
+        // 12 Skins Originales
+        const skins = {
+            melifera: { id: 'melifera', name: "Melífera Clásica", price: 0, owned: true, speed: 0, fly: 0, hearts: 0, mult: 1, image: '01.png', body: '#f59e0b', stripe: '#0f172a', wing: '#e2e8f0', eye: '#ffffff' },
+            silvestre: { id: 'silvestre', name: "Obrera Silvestre", price: 0, owned: true, speed: 0.5, fly: 10, hearts: 0, mult: 1, image: '02.png', body: '#d97706', stripe: '#1e293b', wing: '#cbd5e1', eye: '#ffffff' },
+            violeta: { id: 'violeta', name: "Carpintera Violeta", price: 0, owned: true, speed: 0, fly: 30, hearts: 0, mult: 1, image: '03.png', body: '#581c87', stripe: '#3b0764', wing: '#a855f7', eye: '#fef08a' },
+            cortadora: { id: 'cortadora', name: "Cortadora de Hojas", price: 0, owned: true, speed: 0.8, fly: 0, hearts: 0, mult: 1, image: '04.png', body: '#15803d', stripe: '#052e16', wing: '#86efac', eye: '#ffffff' },
+            albanil: { id: 'albanil', name: "Albañil Azul", price: 0, owned: true, speed: 0, fly: 0, hearts: 1, mult: 1, image: '05.png', body: '#0284c7', stripe: '#0c4a6e', wing: '#7dd3fc', eye: '#ffffff' },
+            terrestre: { id: 'terrestre', name: "Abejorro Terrestre", price: 100, owned: false, speed: -0.3, fly: 0, hearts: 2, mult: 1.1, image: '06.png', body: '#facc15', stripe: '#000000', wing: '#e2e8f0', eye: '#ffffff' },
+            reina: { id: 'reina', name: "Reina Real", price: 150, owned: false, speed: 0.2, fly: 40, hearts: 1, mult: 2.0, image: '07.png', body: '#facc15', stripe: '#451a03', wing: '#fef08a', eye: '#38bdf8', crown: true },
+            neon: { id: 'neon', name: "Temporada Navideña", price: 120, owned: false, speed: 1.2, fly: 20, hearts: 0, mult: 1.2, image: '08.png', body: '#22c55e', stripe: '#000000', wing: '#4ade80', eye: '#38bdf8' },
+            robo: { id: 'robo', name: "Cyber Mecánica", price: 180, owned: false, speed: 0.5, fly: 50, hearts: 1, mult: 1.2, image: '09.png', body: '#94a3b8', stripe: '#0284c7', wing: '#38bdf8', eye: '#ef4444' },
+            ninja: { id: 'ninja', name: "Ninja Sombras", price: 200, owned: false, speed: 1.5, fly: 20, hearts: 0, mult: 1.3, image: '10.png', body: '#334155', stripe: '#0f172a', wing: '#64748b', eye: '#e2e8f0' },
+            fuego: { id: 'fuego', name: "Fuego Escarlata", price: 220, owned: false, speed: 0.8, fly: 30, hearts: 1, mult: 1.3, image: '11.png', body: '#ef4444', stripe: '#7f1d1d', wing: '#f97316', eye: '#fef08a' },
+            glacial: { id: 'glacial', name: "Hielo Glacial", price: 240, owned: false, speed: 0.3, fly: 60, hearts: 1, mult: 1.3, image: '12.png', body: '#38bdf8', stripe: '#0369a1', wing: '#bae6fd', eye: '#ffffff' }
+        };
+        let equippedSkin = 'melifera';
+
+        // 10 UNIQUE SKILLS
+        const skillsData = {
+            rock: { id: 'rock', name: "1. Muro de Rocas", cost: 100, desc: "Pared que frena hachas y redes por 10s." },
+            fire: { id: 'fire', name: "2. Aura de Fuego", cost: 120, desc: "Escudo ardiente de 10s que destruye hachas." },
+            flight: { id: 'flight', name: "3. Turbo Vuelo Infinito", cost: 140, desc: "Vuelo hiper-rápido sin gastar estamina." },
+            wind: { id: 'wind', name: "4. Escudo de Viento", cost: 160, desc: "Ráfaga de viento que empuja hachas lejos." },
+            magnet: { id: 'magnet', name: "5. Magneto Gigante", cost: 180, desc: "Atrae todo el polen del mapa por 10s." },
+            freeze: { id: 'freeze', name: "6. Congelación de Tiempo", cost: 200, desc: "Detiene por completo barriles y hachas." },
+            honey: { id: 'honey', name: "7. Campo de Miel Slow", cost: 220, desc: "Ralentiza enemigos un 80% por 10s." },
+            ghost: { id: 'ghost', name: "8. Modo Fantasma", cost: 250, desc: "Invisibilidad total e inmunidad a hachas." },
+            shock: { id: 'shock', name: "9. Onda Sísmica", cost: 280, desc: "Limpia la pantalla de hachas e impacta al Jefe." },
+            clone: { id: 'clone', name: "10. Clon Distractor", cost: 300, desc: "Crea un clon de abeja que atrae proyectiles." }
+        };
+        let ownedSkills = { rock: true };
+        let equippedSkill = 'rock';
+        let skillState = { active: false, timer: 0, cooldown: 0 };
+
+        // Player Stats & Upgrades
+        let playerStats = { maxLives: 3, jumpPower: 11.5, maxStamina: 180, magnetRadius: 40 };
+        let statUpgrades = {
+            lives: { level: 1, baseCost: 100 },
+            stamina: { level: 1, baseCost: 80 },
+            jump: { level: 1, baseCost: 70 },
+            magnet: { level: 1, baseCost: 120 }
+        };
+
+        // Player Entity
+        let player = {
+            x: 200, y: 4600, w: 36, h: 30, vx: 0, vy: 0, speed: 5.5,
+            lives: 3, facing: 1, invulnerable: 0, wingAnim: 0,
+            grounded: false, stamina: 180, flyHoldTimer: 0, tilt: 0
+        };
+
+        // Entities Lists
+        let platforms = [], coins = [], secretZones = [], barrels = [], axes = [], fires = [], rockWalls = [];
+        let weatherParticles = [], fireworks = [], clones = [], honeyFields = [];
+        let boss = null, nets = [], hivePortal = null;
+
+        // Input Handler
+        const keys = {};
+        window.addEventListener('keydown', e => {
+            if (!keys[e.code]) {
+                if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') triggerJump();
+            }
+            keys[e.code] = true;
+            if (e.code === 'KeyQ' || e.code === 'KeyE') activateEquippedSkill();
+        });
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        const setupTouchBtn = (id, keyCode) => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); if (!keys[keyCode]) triggerJump(); keys[keyCode] = true; });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyCode] = false; });
+            btn.addEventListener('mousedown', () => { if (!keys[keyCode]) triggerJump(); keys[keyCode] = true; });
+            btn.addEventListener('mouseup', () => keys[keyCode] = false);
+        };
+        setupTouchBtn('btn-left', 'ArrowLeft');
+        setupTouchBtn('btn-right', 'ArrowRight');
+        setupTouchBtn('btn-fly', 'Space');
+        document.getElementById('btn-jump').addEventListener('click', triggerJump);
+        document.getElementById('btn-skill').addEventListener('click', activateEquippedSkill);
+
+        function triggerJump() {
+            if (player.grounded) {
+                player.vy = -playerStats.jumpPower;
+                player.grounded = false;
+            }
+        }
+
+        function activateEquippedSkill() {
+            if (!equippedSkill || skillState.cooldown > 0) return;
+            skillState.active = true;
+            skillState.timer = 600; 
+            skillState.cooldown = 900; 
+
+            if (equippedSkill === 'rock') {
+                rockWalls.push({ x: player.x + (player.facing * 50), y: player.y - 20, w: 28, h: 85, life: 600 });
+            } else if (equippedSkill === 'clone') {
+                clones.push({ x: player.x, y: player.y, life: 600 });
+            } else if (equippedSkill === 'honey') {
+                honeyFields.push({ x: player.x - 100, y: player.y - 100, w: 200, h: 200, life: 600 });
+            } else if (equippedSkill === 'shock') {
+                axes = [];
+                if (boss) boss.health -= 5;
+            }
+        }
+
+        function drawPixelRect(targetCtx, x, y, w, h, color) {
+            targetCtx.fillStyle = color;
+            targetCtx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
+        }
+
+        function drawPixelBee(targetCtx, x, y, scale = 1, skinKey = equippedSkin, facing = 1, wingState = 0, tilt = 0) {
+            const sk = skins[skinKey] || skins['melifera'];
+            const img = skinImages[sk.image];
+
+            targetCtx.save();
+            targetCtx.translate(Math.floor(x + (18 * scale)), Math.floor(y + (15 * scale)));
+            targetCtx.rotate(tilt);
+            targetCtx.scale(facing, 1);
+
+            if (equippedSkill === 'ghost' && skillState.active) targetCtx.globalAlpha = 0.4;
+            if (equippedSkill === 'fire' && skillState.active) {
+                targetCtx.fillStyle = "rgba(249, 115, 22, 0.45)";
+                targetCtx.beginPath();
+                targetCtx.arc(0, 0, 26 * scale, 0, Math.PI * 2);
+                targetCtx.fill();
+            }
+
+            if (img && img.complete) {
+                const drawW = 55 * scale;
+                const drawH = 55 * scale;
+                targetCtx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+            } else {
+                const wingY = Math.sin(wingState) * 6;
+                drawPixelRect(targetCtx, -12 * scale, (-14 + wingY) * scale, 14 * scale, 9 * scale, sk.wing);
+                drawPixelRect(targetCtx, -2 * scale, (-16 - wingY) * scale, 14 * scale, 9 * scale, sk.wing);
+                drawPixelRect(targetCtx, -16 * scale, -10 * scale, 32 * scale, 20 * scale, sk.body);
+                drawPixelRect(targetCtx, -14 * scale, -12 * scale, 28 * scale, 24 * scale, sk.body);
+                drawPixelRect(targetCtx, -7 * scale, -12 * scale, 6 * scale, 24 * scale, sk.stripe);
+                drawPixelRect(targetCtx, 5 * scale, -12 * scale, 6 * scale, 24 * scale, sk.stripe);
+            }
+
+            targetCtx.restore();
+        }
+
+        function drawPixelBarrel(targetCtx, x, y) {
+            drawPixelRect(targetCtx, x + 4, y, 40, 52, "#78350f");
+            drawPixelRect(targetCtx, x + 2, y + 6, 44, 40, "#92400e");
+            drawPixelRect(targetCtx, x + 2, y + 10, 44, 5, "#475569");
+            drawPixelRect(targetCtx, x + 2, y + 37, 44, 5, "#475569");
+        }
+
+        function drawPixelAxe(targetCtx, x, y, rotation) {
+            targetCtx.save();
+            targetCtx.translate(x, y);
+            targetCtx.rotate(rotation);
+            drawPixelRect(targetCtx, -3, -18, 6, 36, "#78350f");
+            drawPixelRect(targetCtx, 3, -14, 14, 16, "#94a3b8");
+            drawPixelRect(targetCtx, 17, -16, 5, 20, "#e2e8f0");
+            targetCtx.restore();
+        }
+
+        function drawPixelFire(targetCtx, x, y) {
+            const flicker = Math.sin(Date.now() * 0.02) * 3;
+            drawPixelRect(targetCtx, x - 15, y - 18 + flicker, 30, 36, "#f97316");
+            drawPixelRect(targetCtx, x - 10, y - 22 + flicker, 20, 36, "#ef4444");
+            drawPixelRect(targetCtx, x - 5, y - 8, 10, 16, "#facc15");
+        }
+
+        function drawPixelBeekeeper(targetCtx, x, y, health, maxHealth) {
+            drawPixelRect(targetCtx, x + 10, y, 60, 100, "#f8fafc");
+            drawPixelRect(targetCtx, x + 5, y + 20, 70, 65, "#e2e8f0");
+            drawPixelRect(targetCtx, x + 20, y + 10, 40, 28, "#1e293b");
+            drawPixelRect(targetCtx, x + 23, y + 13, 34, 22, "#0284c7");
+            drawPixelRect(targetCtx, x + 8, y + 85, 22, 18, "#d97706");
+            drawPixelRect(targetCtx, x + 50, y + 85, 22, 18, "#d97706");
+
+            drawPixelRect(targetCtx, x - 10, y - 20, 100, 10, "#000000");
+            drawPixelRect(targetCtx, x - 8, y - 18, (health / maxHealth) * 96, 6, "#ef4444");
+        }
+
+        let currentWorldHeight = WORLD_HEIGHT;
+
+        function loadLevel(lvlNum) {
+            currentLevel = lvlNum;
+            const lvl = levelsData[lvlNum - 1];
+            document.getElementById("ui-level-name").innerText = `Piso ${lvlNum}: ${lvl.name}`;
+            
+            currentWorldHeight = Math.floor(WORLD_HEIGHT * (lvl.heightScale || 1.0));
+
+            player.x = 300;
+            player.y = currentWorldHeight - 300;
+            player.vx = 0; player.vy = 0;
+            player.invulnerable = 0;
+            
+            const sk = skins[equippedSkin];
+            player.stamina = playerStats.maxStamina + sk.fly;
+            player.lives = playerStats.maxLives + sk.hearts;
+
+            platforms = []; coins = []; secretZones = []; barrels = []; axes = []; fires = []; rockWalls = [];
+            weatherParticles = []; clones = []; honeyFields = []; nets = []; breakableDebris = []; boss = null; hivePortal = null;
+
+            platforms.push({ x: 0, y: currentWorldHeight - 120, w: WORLD_WIDTH, h: 120, type: 'trunk' });
+
+            const rows = Math.floor(28 * (lvl.heightScale || 1.0));
+            for (let r = 1; r < rows; r++) {
+                const rowY = currentWorldHeight - (r * 165);
+                const count = 4 + Math.floor(Math.random() * 3);
+                for (let c = 0; c < count; c++) {
+                    const pw = 280 + Math.floor(Math.random() * 220);
+                    const px = (c * (WORLD_WIDTH / count)) + Math.floor(Math.random() * 80);
+                    
+                    let pType = 'branch';
+                    const randType = Math.random();
+                    if (randType < 0.22 && r > 2) pType = 'breakable';
+                    else if (randType < 0.38) pType = 'bounce';
+                    else if (randType < 0.52) pType = 'speed';
+
+                    platforms.push({ 
+                        x: px, y: rowY, w: pw, h: 28, 
+                        type: pType, 
+                        stepping: false, stepTimer: 0, broken: false,
+                        bounceAnim: 0,
+                        speedDir: (c % 2 === 0) ? 1 : -1
+                    });
+
+                    if (Math.random() < 0.8) {
+                        for (let k = 0; k < 3; k++) coins.push({ x: px + 40 + (k * 65), y: rowY - 35, collected: false });
+                    }
+                    if (r % 3 === 0 && c % 2 === 0) {
+                        barrels.push({ x: px + pw / 2, y: rowY - 52, timer: 0, interval: Math.max(30, 90 - lvlNum * 5) });
+                    }
+                }
+
+                if (r % 4 === 0) {
+                    secretZones.push({ x: Math.random() < 0.5 ? 120 : WORLD_WIDTH - 280, y: rowY - 40, w: 140, h: 100, discovered: false, reward: 120 });
+                }
+            }
+
+            for (let f = 0; f < 2 + Math.floor(lvlNum / 2); f++) {
+                fires.push({ x: 200 + (f * 900), y: currentWorldHeight - 400 - (f * 400), speed: 1.2 + (lvlNum * 0.1) });
+            }
+
+            if (lvl.rain || lvl.snow || lvl.storm) {
+                for (let i = 0; i < 140; i++) {
+                    weatherParticles.push({ x: Math.random() * WORLD_WIDTH, y: Math.random() * currentWorldHeight, vy: lvl.rain ? 12 : 2, vx: lvl.rain ? -3 : 1 });
+                }
+            }
+
+            if (lvlNum === 10) {
+                boss = { x: WORLD_WIDTH / 2, y: 300, w: 80, h: 100, health: 50, maxHealth: 50, vx: 3.5, netTimer: 0 };
+            }
+            hivePortal = { x: WORLD_WIDTH / 2 - 40, y: 180, w: 80, h: 100 };
+
+            gameState = "PLAYING";
+            updateUI();
+        }
+
+        function takeDamage() {
+            if (player.invulnerable > 0) return;
+            player.lives--;
+            player.invulnerable = 90;
+            updateUI();
+            if (player.lives <= 0) {
+                triggerMsg("¡Has Caído!", "La abeja necesita recuperarse.", "REINTENTAR", () => loadLevel(currentLevel));
+            }
+        }
+
+        function triggerVictory() {
+            gameState = "VICTORY";
+            const elapsedSeconds = Math.floor((Date.now() - matchStartTime) / 1000);
+            const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+            const secs = String(elapsedSeconds % 60).padStart(2, '0');
+
+            document.getElementById("vic-time").innerText = `${mins}:${secs}`;
+            document.getElementById("vic-polen").innerText = polenCoins;
+            document.getElementById("vic-secrets").innerText = totalSecretsDiscovered;
+            document.getElementById("vic-axes").innerText = axesDodgedCount;
+            document.getElementById("vic-score").innerText = `${score} Pts`;
+
+            document.getElementById("victory-modal").classList.remove("hidden");
+
+            for (let i = 0; i < 80; i++) {
+                fireworks.push({
+                    x: Math.random() * camera.width,
+                    y: Math.random() * camera.height,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    color: `hsl(${Math.random() * 360}, 100%, 60%)`,
+                    life: 100
+                });
+            }
+        }
+
+        function update() {
+            if (gameState !== "PLAYING") return;
+
+            if (skillState.active) {
+                skillState.timer--;
+                if (skillState.timer <= 0) skillState.active = false;
+            }
+            if (skillState.cooldown > 0) skillState.cooldown--;
+
+            if (player.invulnerable > 0) player.invulnerable--;
+
+            const sk = skins[equippedSkin];
+            let curSpeed = player.speed + sk.speed;
+
+            if (speedEffectTimer > 0) {
+                curSpeed *= 1.85;
+                speedEffectTimer--;
+            }
+
+            if (keys['ArrowLeft'] || keys['KeyA']) {
+                player.vx = -curSpeed;
+                player.facing = -1;
+                player.tilt = -0.15;
+            } else if (keys['ArrowRight'] || keys['KeyD']) {
+                player.vx = curSpeed;
+                player.facing = 1;
+                player.tilt = 0.15;
+            } else {
+                player.vx *= 0.82;
+                player.tilt = 0;
+            }
+
+            const isFlyPressed = keys['ArrowUp'] || keys['KeyW'] || keys['Space'];
+            if (isFlyPressed) player.flyHoldTimer++;
+            else player.flyHoldTimer = 0;
+
+            const isFlightMode = (isFlyPressed && player.flyHoldTimer > 8) || (equippedSkill === 'flight' && skillState.active);
+            const maxStam = playerStats.maxStamina + sk.fly;
+
+            if (isFlightMode && (player.stamina > 0 || (equippedSkill === 'flight' && skillState.active))) {
+                player.vy = -3.8;
+                player.wingAnim += 0.5;
+                player.grounded = false;
+                if (!(equippedSkill === 'flight' && skillState.active)) player.stamina = Math.max(0, player.stamina - 1);
+            } else {
+                player.vy += 0.52;
+                player.wingAnim += 0.1;
+            }
+
+            if (player.grounded) player.stamina = Math.min(maxStam, player.stamina + 2.5);
+
+            player.x += player.vx;
+            player.y += player.vy;
+
+            if (player.x < 0) player.x = 0;
+            if (player.x > WORLD_WIDTH - player.w) player.x = WORLD_WIDTH - player.w;
+            if (player.y > currentWorldHeight) player.y = currentWorldHeight - player.h;
+
+            const targetCamX = player.x + player.w / 2 - camera.width / 2;
+            const targetCamY = player.y + player.h / 2 - camera.height / 2;
+            camera.x += (targetCamX - camera.x) * 0.1;
+            camera.y += (targetCamY - camera.y) * 0.1;
+            camera.x = Math.max(0, Math.min(WORLD_WIDTH - camera.width, camera.x));
+            camera.y = Math.max(0, Math.min(currentWorldHeight - camera.height, camera.y));
+
+            player.grounded = false;
+            for (let p of platforms) {
+                if (p.broken) continue;
+
+                if (p.bounceAnim > 0) p.bounceAnim -= 0.1;
+
+                if (player.x < p.x + p.w && player.x + player.w > p.x &&
+                    player.y + player.h > p.y && player.y + player.h < p.y + p.h + 18 && player.vy >= 0) {
+                    
+                    if (p.type === 'bounce') {
+                        player.vy = -18.5;
+                        player.grounded = false;
+                        p.bounceAnim = 1.0;
+                    } 
+                    else if (p.type === 'breakable') {
+                        player.y = p.y - player.h;
+                        player.vy = 0;
+                        player.grounded = true;
+                        p.stepping = true;
+                        p.stepTimer++;
+                        if (p.stepTimer > 45) {
+                            p.broken = true;
+                            for (let d = 0; d < 12; d++) {
+                                breakableDebris.push({
+                                    x: p.x + Math.random() * p.w,
+                                    y: p.y + Math.random() * p.h,
+                                    vx: (Math.random() - 0.5) * 6,
+                                    vy: Math.random() * -4 - 1,
+                                    size: 4 + Math.random() * 6,
+                                    color: '#78350f',
+                                    life: 40
+                                });
+                            }
+                        }
+                    } 
+                    else if (p.type === 'speed') {
+                        player.y = p.y - player.h;
+                        player.vy = 0;
+                        player.grounded = true;
+                        player.vx += p.speedDir * 4.5;
+                        speedEffectTimer = 15;
+                    } 
+                    else {
+                        player.y = p.y - player.h;
+                        player.vy = 0;
+                        player.grounded = true;
+                    }
+                }
+            }
+
+            for (let i = breakableDebris.length - 1; i >= 0; i--) {
+                let deb = breakableDebris[i];
+                deb.x += deb.vx;
+                deb.y += deb.vy;
+                deb.vy += 0.4;
+                deb.life--;
+                if (deb.life <= 0) breakableDebris.splice(i, 1);
+            }
+
+            const effMagnet = (equippedSkill === 'magnet' && skillState.active) ? 600 : playerStats.magnetRadius;
+            coins.forEach(c => {
+                if (!c.collected) {
+                    const dist = Math.hypot((player.x + player.w/2) - c.x, (player.y + player.h/2) - c.y);
+                    if (dist < effMagnet) {
+                        c.x += (player.x - c.x) * 0.2;
+                        c.y += (player.y - c.y) * 0.2;
+                    }
+                    if (dist < 26) {
+                        c.collected = true;
+                        polenCoins += Math.floor(5 * sk.mult);
+                        score += 50;
+                        updateUI();
+                    }
+                }
+            });
+
+            secretZones.forEach(s => {
+                if (!s.discovered && player.x + player.w > s.x && player.x < s.x + s.w && player.y + player.h > s.y && player.y < s.y + s.h) {
+                    s.discovered = true;
+                    totalSecretsDiscovered++;
+                    polenCoins += s.reward;
+                    score += 500;
+                    updateUI();
+                }
+            });
+
+            if (!(equippedSkill === 'freeze' && skillState.active)) {
+                barrels.forEach(b => {
+                    b.timer++;
+                    if (b.timer >= b.interval) {
+                        b.timer = 0;
+                        const spawnX = Math.max(50, Math.min(WORLD_WIDTH - 50, (player.x - 400) + Math.random() * 800));
+                        axes.push({ 
+                            x: spawnX, 
+                            y: camera.y - 40, 
+                            vx: (Math.random() - 0.5) * 3, 
+                            vy: 4 + (currentLevel * 0.4), 
+                            rot: Math.random() * Math.PI * 2,
+                            rotSpeed: (Math.random() > 0.5 ? 1 : -1) * (0.15 + Math.random() * 0.2)
+                        });
+                    }
+                });
+            }
+
+            for (let i = axes.length - 1; i >= 0; i--) {
+                let ax = axes[i];
+                if (!(equippedSkill === 'freeze' && skillState.active)) {
+                    ax.x += ax.vx;
+                    ax.y += ax.vy;
+                    ax.rot += ax.rotSpeed || 0.28;
+                }
+
+                if (equippedSkill === 'wind' && skillState.active) ax.vy = -8;
+
+                let destroyed = false;
+                fires.forEach(f => { if (Math.hypot(ax.x - f.x, ax.y - f.y) < 36) destroyed = true; });
+                if (equippedSkill === 'fire' && skillState.active && Math.hypot(ax.x - (player.x + player.w/2), ax.y - (player.y + player.h/2)) < 50) destroyed = true;
+                rockWalls.forEach(r => { if (ax.x > r.x && ax.x < r.x + r.w && ax.y > r.y && ax.y < r.y + r.h) destroyed = true; });
+
+                if (destroyed) {
+                    axes.splice(i, 1);
+                    continue;
+                }
+
+                const isGhost = equippedSkill === 'ghost' && skillState.active;
+                if (!isGhost && player.invulnerable <= 0 && Math.abs((player.x + player.w/2) - ax.x) < 22 && Math.abs((player.y + player.h/2) - ax.y) < 22) {
+                    takeDamage();
+                    axes.splice(i, 1);
+                } else if (ax.y > currentWorldHeight || ax.x < 0 || ax.x > WORLD_WIDTH) {
+                    axesDodgedCount++;
+                    axes.splice(i, 1);
+                }
+            }
+
+            if (boss) {
+                boss.x += boss.vx;
+                if (boss.x < 200 || boss.x > WORLD_WIDTH - 300) boss.vx *= -1;
+
+                boss.netTimer++;
+                if (boss.netTimer >= 110) {
+                    boss.netTimer = 0;
+                    nets.push({ x: boss.x + 30, y: boss.y + 60, vy: 5, vx: (player.x - boss.x) * 0.01 });
+                }
+
+                for (let i = nets.length - 1; i >= 0; i--) {
+                    let n = nets[i];
+                    n.x += n.vx; n.y += n.vy;
+                    if (player.invulnerable <= 0 && Math.hypot((player.x + player.w/2) - n.x, (player.y + player.h/2) - n.y) < 30) {
+                        takeDamage();
+                        nets.splice(i, 1);
+                    } else if (n.y > currentWorldHeight) nets.splice(i, 1);
+                }
+
+                if (player.x + player.w > boss.x && player.x < boss.x + boss.w && player.y + player.h > boss.y && player.y < boss.y + boss.h) {
+                    if (player.vy > 0 && player.y + player.h - player.vy <= boss.y + 24) {
+                        boss.health -= 2;
+                        player.vy = -10;
+                        score += 300;
+                        if (boss.health <= 0) triggerVictory();
+                    } else if (player.invulnerable <= 0) {
+                        takeDamage();
+                    }
+                }
+            } else if (hivePortal && currentLevel < 10) {
+                if (player.x + player.w > hivePortal.x && player.x < hivePortal.x + hivePortal.w && player.y + player.h > hivePortal.y && player.y < hivePortal.y + hivePortal.h) {
+                    unlockedLevels = Math.max(unlockedLevels, currentLevel + 1);
+                    loadLevel(currentLevel + 1);
+                }
+            }
+
+            const maxStamHUD = playerStats.maxStamina + sk.fly;
+            document.getElementById("stamina-bar-fill").style.width = `${(player.stamina / maxStamHUD) * 100}%`;
+        }
+
+        function draw() {
+            const lvl = levelsData[currentLevel - 1];
+            ctx.save();
+            ctx.translate(-Math.floor(camera.x), -Math.floor(camera.y));
+
+            ctx.fillStyle = lvl.sky;
+            ctx.fillRect(0, 0, WORLD_WIDTH, currentWorldHeight);
+
+            ctx.fillStyle = lvl.bark;
+            ctx.fillRect(0, 0, WORLD_WIDTH, currentWorldHeight);
+
+            ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+            for (let i = 0; i < WORLD_WIDTH; i += 40) ctx.fillRect(i, 0, 8, currentWorldHeight);
+
+            platforms.forEach(p => {
+                if (p.broken) return;
+
+                if (p.type === 'breakable') {
+                    const isCracked = p.stepping && p.stepTimer > 15;
+                    ctx.fillStyle = isCracked ? "#ef4444" : "#b45309";
+                    ctx.fillRect(p.x, p.y, p.w, p.h);
+                    
+                    ctx.fillStyle = "#451a03";
+                    ctx.fillRect(p.x + 10, p.y + 6, p.w - 20, 4);
+                    if (isCracked) ctx.fillRect(p.x + p.w / 2, p.y, 6, p.h);
+                } 
+                else if (p.type === 'bounce') {
+                    ctx.fillStyle = "#3b1d07";
+                    ctx.fillRect(p.x, p.y + 10, p.w, p.h - 10);
+
+                    const bounceOffsetY = p.bounceAnim * 6;
+                    ctx.fillStyle = "#dc2626";
+                    ctx.fillRect(p.x + 10, p.y - 6 + bounceOffsetY, p.w - 20, 16);
+                    ctx.fillStyle = "#fef08a";
+                    for (let s = 25; s < p.w - 25; s += 30) {
+                        ctx.fillRect(p.x + s, p.y - 2 + bounceOffsetY, 8, 8);
+                    }
+                } 
+                else if (p.type === 'speed') {
+                    ctx.fillStyle = "#1e293b";
+                    ctx.fillRect(p.x, p.y, p.w, p.h);
+
+                    ctx.fillStyle = "#38bdf8";
+                    const arrowStep = 30;
+                    for (let a = 10; a < p.w - 15; a += arrowStep) {
+                        if (p.speedDir > 0) {
+                            ctx.fillRect(p.x + a, p.y + 8, 12, 12);
+                            ctx.fillRect(p.x + a + 8, p.y + 4, 4, 20);
+                        } else {
+                            ctx.fillRect(p.x + a, p.y + 8, 12, 12);
+                            ctx.fillRect(p.x + a - 4, p.y + 4, 4, 20);
+                        }
+                    }
+                } 
+                else {
+                    ctx.fillStyle = p.type === 'trunk' ? lvl.bark : "#3b1d07";
+                    ctx.fillRect(p.x, p.y, p.w, p.h);
+                    ctx.fillStyle = lvl.foliage;
+                    ctx.fillRect(p.x, p.y, p.w, 8);
+                }
+            });
+
+            breakableDebris.forEach(deb => {
+                ctx.fillStyle = deb.color;
+                ctx.fillRect(deb.x, deb.y, deb.size, deb.size);
+            });
+
+            secretZones.forEach(s => {
+                if (!s.discovered) {
+                    drawPixelRect(ctx, s.x, s.y, s.w, s.h, "#0b0502");
+                    ctx.fillStyle = lvl.foliage;
+                    ctx.fillRect(s.x, s.y, s.w, s.h);
+                }
+            });
+
+            coins.forEach(c => {
+                if (!c.collected) {
+                    drawPixelRect(ctx, c.x - 7, c.y - 7, 14, 14, "#f59e0b");
+                    drawPixelRect(ctx, c.x - 4, c.y - 4, 8, 8, "#fef08a");
+                }
+            });
+
+            barrels.forEach(b => drawPixelBarrel(ctx, b.x, b.y));
+            axes.forEach(ax => drawPixelAxe(ctx, ax.x, ax.y, ax.rot));
+            rockWalls.forEach(r => drawPixelRect(ctx, r.x, r.y, r.w, r.h, "#64748b"));
+            fires.forEach(f => drawPixelFire(ctx, f.x, f.y));
+
+            if (hivePortal) {
+                drawPixelRect(ctx, hivePortal.x, hivePortal.y, hivePortal.w, hivePortal.h, "#d97706");
+                drawPixelRect(ctx, hivePortal.x + 8, hivePortal.y + 10, hivePortal.w - 16, hivePortal.h - 20, "#f59e0b");
+            }
+
+            if (boss) drawPixelBeekeeper(ctx, boss.x, boss.y, boss.health, boss.maxHealth);
+
+            if (player.invulnerable % 4 < 2) {
+                drawPixelBee(ctx, player.x, player.y, 1, equippedSkin, player.facing, player.wingAnim, player.tilt);
+            }
+
+            ctx.restore();
+
+            if (fireworks.length > 0) {
+                fireworks.forEach((p, idx) => {
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x, p.y, 4, 4);
+                    p.x += p.vx; p.y += p.vy; p.life--;
+                    if (p.life <= 0) fireworks.splice(idx, 1);
+                });
+            }
+
+            drawMinimap();
+        }
+
+        function drawMinimap() {
+            const mw = minimapCanvas.width;
+            const mh = minimapCanvas.height;
+            const scaleX = mw / WORLD_WIDTH;
+            const scaleY = mh / currentWorldHeight;
+
+            miniCtx.fillStyle = "#090d16";
+            miniCtx.fillRect(0, 0, mw, mh);
+
+            miniCtx.fillStyle = "#15803d";
+            platforms.forEach(p => miniCtx.fillRect(p.x * scaleX, p.y * scaleY, Math.max(2, p.w * scaleX), Math.max(1, p.h * scaleY)));
+
+            miniCtx.fillStyle = "#ef4444";
+            miniCtx.fillRect(player.x * scaleX - 2, player.y * scaleY - 2, 5, 5);
+
+            miniCtx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+            miniCtx.strokeRect(camera.x * scaleX, camera.y * scaleY, camera.width * scaleX, camera.height * scaleY);
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateUI() {
+            const sk = skins[equippedSkin] || skins['melifera'];
+            document.getElementById("ui-lives").innerText = `${player.lives}/${playerStats.maxLives + sk.hearts}`;
+            document.getElementById("ui-polen").innerText = polenCoins;
+            document.getElementById("ui-score").innerText = `${score} Pts`;
+            document.getElementById("shop-polen-display").innerText = polenCoins;
+
+            const prevCanvas = document.getElementById("skin-preview-canvas");
+            const prevCtx = prevCanvas.getContext("2d");
+            prevCtx.clearRect(0, 0, prevCanvas.width, prevCanvas.height);
+            drawPixelBee(prevCtx, 0, 2, 0.7, equippedSkin, 1, 0, 0);
+
+            const cd = document.getElementById("cd-equipped");
+            if (skillState.cooldown > 0) cd.innerText = `${Math.ceil(skillState.cooldown / 60)}s`;
+            else cd.innerText = "LISTO";
+        }
+
+        function triggerMsg(title, desc, btnText = "CONTINUAR", callback = null) {
+            document.getElementById("msg-title").innerText = title;
+            document.getElementById("msg-desc").innerText = desc;
+            const btn = document.getElementById("msg-btn");
+            btn.innerText = btnText;
+            btn.onclick = () => { closeMsgOverlay(); if (callback) callback(); };
+            document.getElementById("msg-overlay").classList.remove("hidden");
+            gameState = "PAUSED";
+        }
+
+        function closeMsgOverlay() {
+            document.getElementById("msg-overlay").classList.add("hidden");
+            if (gameState === "PAUSED") gameState = "PLAYING";
+        }
+
+        function restartFullGame() {
+            document.getElementById("victory-modal").classList.add("hidden");
+            score = 0; matchStartTime = Date.now(); axesDodgedCount = 0; totalSecretsDiscovered = 0;
+            loadLevel(1);
+        }
+
+        function enableFreeMode() {
+            document.getElementById("victory-modal").classList.add("hidden");
+            gameState = "PLAYING";
+        }
+
+        function startGame() {
+            document.getElementById("menu-overlay").classList.add("hidden");
+            matchStartTime = Date.now();
+            loadLevel(1);
+        }
+
+        function switchShopTab(tab) {
+            ['skins', 'skills', 'stats'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`tab-btn-${t}`).className = "px-3 py-2 text-xs font-pixel border-b-2 border-transparent text-slate-400 hover:text-white shrink-0";
+            });
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-btn-${tab}`).className = "px-3 py-2 text-xs font-pixel border-b-2 border-amber-500 text-amber-400 shrink-0";
+        }
+
+        function renderSkinsShop() {
+            const container = document.getElementById("tab-skins");
+            container.innerHTML = "";
+            Object.keys(skins).forEach(k => {
+                const s = skins[k];
+                const card = document.createElement("div");
+                card.className = "bg-slate-800/80 border border-slate-700/80 hover:border-amber-500/50 p-3 rounded-2xl flex flex-col items-center text-center shadow-lg transition-all";
+                
+                card.innerHTML = `
+                    <div class="w-20 h-20 md:w-24 md:h-24 flex items-center justify-center bg-slate-950/80 rounded-xl border border-amber-500/30 mb-2 p-1 overflow-hidden shadow-inner">
+                        <img src="${s.image}" alt="${s.name}" class="w-full h-full object-contain filter drop-shadow">
+                    </div>
+                    <h5 class="font-pixel text-[10px] md:text-xs text-white truncate w-full mb-1">${s.name}</h5>
+                    <p class="text-[11px] md:text-sm text-amber-300 font-bold mb-2">${s.price === 0 ? 'GRATIS' : s.price + ' 🍯'}</p>
+                    <div class="mt-auto w-full">
+                        ${s.owned ? `
+                            <button onclick="equipSkin('${s.id}')" class="w-full py-1.5 rounded-xl text-[10px] md:text-xs font-pixel shadow transition ${equippedSkin === s.id ? 'bg-emerald-500 text-slate-950 font-bold' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}">
+                                ${equippedSkin === s.id ? 'EQUIPADO' : 'EQUIPAR'}
+                            </button>
+                        ` : `
+                            <button onclick="buySkin('${s.id}')" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 py-1.5 rounded-xl text-[10px] md:text-xs font-pixel shadow transition">
+                                COMPRAR
+                            </button>
+                        `}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderSkillsShop() {
+            const container = document.getElementById("tab-skills");
+            container.innerHTML = "";
+            Object.keys(skillsData).forEach(k => {
+                const sk = skillsData[k];
+                const isOwned = ownedSkills[k];
+                const isEq = equippedSkill === k;
+
+                const card = document.createElement("div");
+                card.className = "bg-slate-800/60 border border-slate-700/80 p-3 rounded-2xl flex items-center justify-between";
+                card.innerHTML = `
+                    <div>
+                        <h4 class="font-bold text-sm text-white">${sk.name}</h4>
+                        <p class="text-slate-400 text-xs">${sk.desc}</p>
+                    </div>
+                    <div>
+                        ${isOwned ? `
+                            <button onclick="equipSkill('${k}')" class="px-3 py-1.5 rounded-xl font-pixel text-xs ${isEq ? 'bg-emerald-500 text-slate-950' : 'bg-slate-700 text-white'}">
+                                ${isEq ? 'EQUIPADO' : 'EQUIPAR'}
+                            </button>
+                        ` : `
+                            <button onclick="buySkill('${k}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-pixel text-xs px-3 py-1.5 rounded-xl">
+                                ${sk.cost} 🍯
+                            </button>
+                        `}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function buySkin(id) {
+            const s = skins[id];
+            if (polenCoins >= s.price) {
+                polenCoins -= s.price;
+                s.owned = true;
+                equipSkin(id);
+                renderSkinsShop();
+                updateUI();
+            }
+        }
+
+        function equipSkin(id) {
+            equippedSkin = id;
+            renderSkinsShop();
+            updateUI();
+        }
+
+        function buySkill(key) {
+            const sk = skillsData[key];
+            if (polenCoins >= sk.cost) {
+                polenCoins -= sk.cost;
+                ownedSkills[key] = true;
+                equipSkill(key);
+                renderSkillsShop();
+                updateUI();
+            }
+        }
+
+        function equipSkill(key) {
+            equippedSkill = key;
+            renderSkillsShop();
+            updateUI();
+        }
+
+        function buyStat(stat) {
+            const up = statUpgrades[stat];
+            const cost = up.level * up.baseCost;
+            if (polenCoins >= cost) {
+                polenCoins -= cost;
+                up.level++;
+                if (stat === 'lives') playerStats.maxLives++;
+                else if (stat === 'stamina') playerStats.maxStamina += 60;
+                else if (stat === 'jump') playerStats.jumpPower += 1.2;
+                else if (stat === 'magnet') playerStats.magnetRadius += 30;
+
+                document.getElementById(`lvl-stat-${stat}`).innerText = up.level;
+                document.getElementById(`cost-stat-${stat}`).innerText = up.level * up.baseCost;
+                updateUI();
+            }
+        }
+
+        function toggleShop() {
+            const modal = document.getElementById("shop-modal");
+            if (modal.classList.contains("hidden")) {
+                gameState = "PAUSED";
+                renderSkinsShop();
+                renderSkillsShop();
+                modal.classList.remove("hidden");
+            } else {
+                modal.classList.add("hidden");
+                if (gameState === "PAUSED") gameState = "PLAYING";
+            }
+        }
+
+        function toggleMapModal() {
+            const modal = document.getElementById("map-modal");
+            if (modal.classList.contains("hidden")) {
+                gameState = "PAUSED";
+                const grid = document.getElementById("map-grid");
+                grid.innerHTML = "";
+                levelsData.forEach(lvl => {
+                    const btn = document.createElement("button");
+                    const isUnlocked = lvl.id <= unlockedLevels;
+                    btn.className = `p-3 rounded-xl border flex flex-col items-center justify-center font-pixel text-[10px] ${currentLevel === lvl.id ? 'bg-amber-500 text-slate-950 border-amber-400' : isUnlocked ? 'bg-slate-800 text-white border-slate-700' : 'bg-slate-950 text-slate-600 border-slate-900 opacity-50'}`;
+                    btn.innerHTML = `<span>Piso ${lvl.id}</span><span class="text-[8px] font-sans opacity-80 mt-1">${lvl.name}</span>`;
+                    if (isUnlocked) btn.onclick = () => { loadLevel(lvl.id); toggleMapModal(); };
+                    grid.appendChild(btn);
+                });
+                modal.classList.remove("hidden");
+            } else {
+                modal.classList.add("hidden");
+                if (gameState === "PAUSED") gameState = "PLAYING";
+            }
+        }
+
+        window.onload = () => {
+            renderSkinsShop();
+            renderSkillsShop();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
